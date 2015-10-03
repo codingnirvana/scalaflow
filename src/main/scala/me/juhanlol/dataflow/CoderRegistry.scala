@@ -9,7 +9,6 @@ import com.google.cloud.dataflow.sdk.values.{TimestampedValue, KV}
 import org.joda.time.Instant
 import scala.collection.mutable
 import scala.reflect.runtime.universe._
-import scala.reflect.runtime.universe
 
 trait CoderFactory {
   def create[_](typeArgumentCoders: List[Coder[_]]): Coder[_]
@@ -41,7 +40,6 @@ class CoderRegistry {
   registerCoder[java.lang.String](classOf[StringUtf8Coder])
   registerCoder[Instant](classOf[InstantCoder])
   registerCoder[java.lang.Void](classOf[VoidCoder])
-  registerCoder[URI](classOf[URICoder])
   registerCoder[TimestampedValue[_]](classOf[TimestampedValue.TimestampedValueCoder[_]])
 
   registerCoder[TableRow](classOf[TableRowJsonCoder])
@@ -49,6 +47,7 @@ class CoderRegistry {
   registerCoder[KV[_, _]](classOf[KvCoder[_, _]])
   registerCoder[java.lang.Iterable[_]](classOf[IterableCoder[_]])
   registerCoder[java.util.List[_]](classOf[ListCoder[_]])
+ // registerCoder[java.net.URI](classOf[StringDelegateCoder[URI]])
 
   def registerCoder[T: TypeTag](coderClazz: Class[_]): Unit = {
     val resolvedInfo = TypeResolver.resolve[T]()

@@ -1,5 +1,7 @@
 package me.juhanlol.dataflow
 
+import java.lang
+
 import com.google.cloud.dataflow.sdk.io.TextIO
 import com.google.cloud.dataflow.sdk.transforms._
 import com.google.cloud.dataflow.sdk.transforms.join.{CoGbkResult, CoGroupByKey, KeyedPCollectionTuple}
@@ -39,7 +41,7 @@ class DList[T: TypeTag](val native: PCollection[T],
       override def processElement(c: ProcessContext): Unit = {
         c.output(func(c.element()))
       }
-    }).named("ScalaMapTransformed")
+    }).named("ScalaMapTransformed" + Math.random())
     val next = native.apply(trans).setCoder(coder)
 
     new DList[U](next, this.coderRegistry)
@@ -58,7 +60,7 @@ class DList[T: TypeTag](val native: PCollection[T],
           c.output(o)
         }
       }
-    }).named("ScalaFlatMapTransformed")
+    }).named("ScalaFlatMapTransformed" + Math.random())
     val next = native.apply(trans).setCoder(coder)
     new DList[U](next, this.coderRegistry)
   }
@@ -74,7 +76,7 @@ class DList[T: TypeTag](val native: PCollection[T],
           c.output(c.element())
         }
       }
-    }).named("ScalaFilterTransformed")
+    }).named("ScalaFilterTransformed" + Math.random())
     new DList[T](native.apply(trans), this.coderRegistry)
   }
 
@@ -92,11 +94,15 @@ class DList[T: TypeTag](val native: PCollection[T],
     new DList(next, coderRegistry)
   }
 
+  def countByElement() : DList[KV[T, lang.Long]] = {
+    this.applyTransform(Count.perElement())
+  }
+
   /**
    * Persist the DList on storage
    * Only text format is supported for the moment
    */
-  def persist(path: String, name: Option[String] = None): Unit = {
+  def save(path: String, name: Option[String] = None): Unit = {
     val trans = TextIO.Write.named(name.getOrElse("Persist")).to(path)
     // TODO how to remove this cast ???
     native.asInstanceOf[PCollection[String]].apply(trans)

@@ -68,9 +68,10 @@ class DListTest extends FunSuite {
 
   test("CountByKey") {
     val job = TestJob()
-    val data = job.of(List("a", "c", "b", "c", "c"))
-    val kv = data.map(x => KV.of(x, 1))
-    val result = kv.countByKey()
+    val result = job
+      .of(List("a", "c", "b", "c", "c"))
+      .map(x => KV.of(x, 1))
+      .countByKey()
 
     DataflowAssert.that(result).containsInAnyOrder(
       KV.of("a", 1l),

@@ -1,9 +1,13 @@
 package me.juhanlol.dataflow
 
+import java.io.File
+import java.net.URI
+
 import com.google.cloud.dataflow.sdk.Pipeline
 import com.google.cloud.dataflow.sdk.io.TextIO
 import com.google.cloud.dataflow.sdk.options.PipelineOptions
 import com.google.cloud.dataflow.sdk.transforms.Create
+import com.google.cloud.dataflow.sdk.values.PCollectionList
 
 import scala.collection.JavaConversions
 import scala.reflect.runtime.universe._
@@ -14,7 +18,7 @@ import scala.reflect.runtime.universe._
  * It handles coder registration and provide methods for creating the initial
  * DList from existing data source
  */
-class DataflowJob(val pipeline: Pipeline) {
+class DataPipeline(val pipeline: Pipeline) {
   val coderRegistry = new CoderRegistry
 
   def this(options: PipelineOptions) = {
@@ -33,13 +37,39 @@ class DataflowJob(val pipeline: Pipeline) {
       coderRegistry)
   }
 
+  //def documents(path: String): DList[]
+  
+
+  private def listInputFiles(path: String): Set[URI] = {
+    val baseUri = new URI(path)
+    val absoluteUri = Option(baseUri.getScheme) match {
+      case None => baseUri
+      case _ => new URI(
+        "file",
+        baseUri.getAuthority,
+        baseUri.getPath,
+        baseUri.getQuery,
+        baseUri.getFragment
+      )
+    }
+    Option(absoluteUri.getScheme) match {
+      case Some("file") =>
+        val directory = new File(absoluteUri)
+        directory.listFiles().map(_.toURI).toSet
+      case _ => throw new UnsupportedOperationException("Only file URI is supported.")
+    }
+
+  }
+
+
+
   /**
    * Create a DList from an in-memory collection, usually for test purpose
    */
   def of[T: TypeTag](iter: Iterable[T]): DList[T] = {
     val coder = coderRegistry.getDefaultCoder[T]
     val pcollection = pipeline.apply(
-      Create.of(JavaConversions.asJavaIterable(iter))).setCoder(coder)
+      Math.random().toString, Create.of(JavaConversions.asJavaIterable(iter))).setCoder(coder)
     new DList(pcollection, coderRegistry)
   }
 }
