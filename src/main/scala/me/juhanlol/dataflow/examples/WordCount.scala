@@ -44,7 +44,7 @@ object WordCount extends App {
   pipeline
     .text(options.getInput)
     .flatMap(line => line.split("[^a-zA-Z']+"))
-    .countByElement()
+    .countPerElement()
     .map { count => count.getKey + "\t" + count.getValue.toString }
     .save(options.getOutput, Some("writeCounts"))
 

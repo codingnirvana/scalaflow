@@ -94,9 +94,10 @@ class DList[T: TypeTag](val native: PCollection[T],
     new DList(next, coderRegistry)
   }
 
-  def countByElement() : DList[KV[T, lang.Long]] = {
-    this.applyTransform(Count.perElement())
-  }
+  def countGlobally(): DList[lang.Long] = this.applyTransform(Count.globally())
+  def countPerElement() : DList[KV[T, lang.Long]] = this.applyTransform(Count.perElement())
+
+  def removeDuplicates() : DList[T] = this.applyTransform(RemoveDuplicates.create[T]())
 
   /**
    * Persist the DList on storage
@@ -111,9 +112,12 @@ class DList[T: TypeTag](val native: PCollection[T],
 
 
 class PairDListFunctions[K: TypeTag, V: TypeTag](self: DList[KV[K, V]]) {
-  def countByKey(): DList[KV[K, java.lang.Long]] = {
-    self.map(kv => kv.getKey).applyTransform(Count.perElement())
-  }
+  def keys(): DList[K] = self.map(kv => kv.getKey)
+  def values(): DList[V] = self.map(kv => kv.getValue)
+  
+  def countPerKey(): DList[KV[K, java.lang.Long]] = keys().applyTransform(Count.perElement())
+  
+  def kvSwap(): DList[KV[V,K]] = self.map(kv => KV.of(kv.getValue, kv.getKey))
 
   def join[W: TypeTag](that: DList[KV[K, W]]): DList[KV[K, KV[V, W]]] = {
     val tv = new TupleTag[V]()

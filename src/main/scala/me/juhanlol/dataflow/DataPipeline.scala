@@ -6,8 +6,8 @@ import java.net.URI
 import com.google.cloud.dataflow.sdk.Pipeline
 import com.google.cloud.dataflow.sdk.io.TextIO
 import com.google.cloud.dataflow.sdk.options.PipelineOptions
-import com.google.cloud.dataflow.sdk.transforms.Create
-import com.google.cloud.dataflow.sdk.values.PCollectionList
+import com.google.cloud.dataflow.sdk.transforms.{PTransform, Flatten, WithKeys, Create}
+import com.google.cloud.dataflow.sdk.values.{PCollection, PInput, KV, PCollectionList}
 
 import scala.collection.JavaConversions
 import scala.reflect.runtime.universe._
@@ -37,29 +37,67 @@ class DataPipeline(val pipeline: Pipeline) {
       coderRegistry)
   }
 
-  //def documents(path: String): DList[]
-  
+ def filesToLines(path: String): DList[KV[URI,String]] = {
+    new DList(pipeline.apply(new ReadDocuments(path)), coderRegistry)
+ }
 
-  private def listInputFiles(path: String): Set[URI] = {
-    val baseUri = new URI(path)
-    val absoluteUri = Option(baseUri.getScheme) match {
-      case None => baseUri
-      case _ => new URI(
-        "file",
-        baseUri.getAuthority,
-        baseUri.getPath,
-        baseUri.getQuery,
-        baseUri.getFragment
-      )
+
+  class ReadDocuments(path: String) extends PTransform[PInput, PCollection[KV[URI, String]]] {
+
+    override def apply(input: PInput) = {
+      val pipeline = input.getPipeline
+
+      var urisToLines: PCollectionList[KV[URI,String]] = PCollectionList.empty(pipeline)
+
+      val uris = listInputFiles(path)
+
+      uris.foreach {
+        uri =>
+          val uriString = uri.getScheme match {
+            case "file" => new File(uri).getPath
+            case _ => uri.toString
+          }
+
+          val oneUriToLines: PCollection[KV[URI, String]] = pipeline
+            .apply(TextIO.Read.from(uriString).named("TextIO.Read(" + uriString + ")"))
+            .apply("WithKeys(" + uriString + ")", WithKeys.of(uri))
+
+          urisToLines = urisToLines.and(oneUriToLines)
+      }
+
+      urisToLines.apply(Flatten.pCollections())
+
     }
-    Option(absoluteUri.getScheme) match {
-      case Some("file") =>
-        val directory = new File(absoluteUri)
-        directory.listFiles().map(_.toURI).toSet
-      case _ => throw new UnsupportedOperationException("Only file URI is supported.")
+
+    private def listInputFiles(path: String): Set[URI] = {
+      val baseUri = new URI(path)
+      val absoluteUri = Option(baseUri.getScheme) match {
+        case None => baseUri
+        case _ => new URI(
+          "file",
+          baseUri.getAuthority,
+          baseUri.getPath,
+          baseUri.getQuery,
+          baseUri.getFragment
+        )
+      }
+      Option(absoluteUri.getScheme) match {
+        case Some("file") =>
+          val directory = new File(absoluteUri)
+          directory.listFiles().map(_.toURI).toSet
+        case _ => throw new UnsupportedOperationException("Only file URI is supported.")
+      }
+
     }
 
   }
+
+
+
+
+
+
+
 
 
 
